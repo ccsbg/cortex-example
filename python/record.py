@@ -1,5 +1,9 @@
 from cortex import Cortex
 import time
+from dotenv import load_dotenv
+import os
+import argparse
+import sys
 
 class Record():
     def __init__(self, app_client_id, app_client_secret, **kwargs):
@@ -144,22 +148,44 @@ class Record():
 # 
 # -----------------------------------------------------------
 
+def validate_export_folder(path):
+    expanded_path = os.path.expanduser(path)
+    if not os.path.isdir(expanded_path):
+        print(f"[ERROR] Export folder does not exist: {expanded_path}")
+        sys.exit(1)
+    if not os.access(expanded_path, os.W_OK):
+        print(f"[ERROR] No write permission for export folder: {expanded_path}")
+        sys.exit(1)
+    return expanded_path
 
 def main():
-    
+
+    load_dotenv()
+
     # Please fill your application clientId and clientSecret before running script
-    your_app_client_id = ''
-    your_app_client_secret = ''
+    your_app_client_id = os.getenv("CLIENT_ID")
+    your_app_client_secret = os.getenv("CLIENT_SECRET")
 
     r = Record(your_app_client_id, your_app_client_secret)
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--record_title', required=True)
+    parser.add_argument('--record_description', default="")
+    parser.add_argument('--record_export_folder', required=True)
+    args = parser.parse_args()
+
+    r.record_title = args.record_title
+    r.record_description = args.record_description
+    r.record_export_folder = args.record_export_folder
+
+    validate_export_folder(r.record_export_folder)
 
     # input params for create_record. Please see on_create_session_done before running script
-    r.record_title = '' # required param and can not be empty
-    r.record_description = '' # optional param
+    # r.record_title = '' # required param and can not be empty
+    # r.record_description = '' # optional param
 
     # input params for export_record. Please see on_warn_cortex_stop_all_sub()
-    r.record_export_folder = '' # your place to export, you should have write permission, example on desktop
+    # r.record_export_folder = '' # your place to export, you should have write permission, example on desktop
     r.record_export_data_types = ['EEG', 'MOTION', 'PM', 'BP']
     r.record_export_format = 'CSV'
     r.record_export_version = 'V2'

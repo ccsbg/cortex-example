@@ -1,5 +1,9 @@
+from email import parser
 import cortex
 from cortex import Cortex
+from dotenv import load_dotenv
+import os
+import argparse
 
 class LiveAdvance():
     """
@@ -274,15 +278,21 @@ class LiveAdvance():
 # -----------------------------------------------------------
 
 def main():
+    load_dotenv()
 
     # Please fill your application clientId and clientSecret before running script
-    your_app_client_id = ''
-    your_app_client_secret = ''
+    your_app_client_id = os.getenv("CLIENT_ID")
+    your_app_client_secret = os.getenv("CLIENT_SECRET")
 
     # Init live advance
     l = LiveAdvance(your_app_client_id, your_app_client_secret)
 
-    trained_profile_name = '' # Please set a trained profile name here
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--trained_profile_name', required=True, help="Trained profile name to use")
+    args = parser.parse_args()
+
+    trained_profile_name = args.trained_profile_name
+    # trained_profile_name = '' # Please set a trained profile name here
     l.start(trained_profile_name)
 
 if __name__ =='__main__':

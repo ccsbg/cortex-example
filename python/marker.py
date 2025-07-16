@@ -1,6 +1,9 @@
 from cortex import Cortex
 import time
 import threading
+from dotenv import load_dotenv
+import os
+import argparse
 
 class Marker():
     def __init__(self, app_client_id, app_client_secret, **kwargs):
@@ -183,23 +186,38 @@ class Marker():
 # -----------------------------------------------------------
 
 def main():
-    
+    load_dotenv()
+
     # Please fill your application clientId and clientSecret before running script
-    your_app_client_id = ''
-    your_app_client_secret = ''
+    your_app_client_id = os.getenv("CLIENT_ID")
+    your_app_client_secret = os.getenv("CLIENT_SECRET")
 
     m = Marker(your_app_client_id, your_app_client_secret)
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--record_title', required=True)
+    parser.add_argument('--record_description', default="")
+    parser.add_argument('--marker_value', required=True)
+    parser.add_argument('--marker_label', required=True)
+    parser.add_argument('--record_export_folder', required=True)
+    args = parser.parse_args()
+
+    m.record_title = args.record_title
+    m.record_description = args.record_description
+    m.marker_value = args.marker_value
+    m.marker_label = args.marker_label
+    m.record_export_folder = args.record_export_folder
+
     # input params for create_record. Please see on_create_session_done before running script
-    m.record_title = '' # required param and can not be empty
-    m.record_description = '' # optional param
+    # m.record_title = '' # required param and can not be empty
+    # m.record_description = '' # optional param
 
     # marker input for inject marker. Please see add_markers()
-    m.marker_value = "test value" # required param and can not be empty
-    m.marker_label = "test label" #required param and can not be empty
+    # m.marker_value = "test value" # required param and can not be empty
+    # m.marker_label = "test label" #required param and can not be empty
 
     # input params for export_record. Please see on_warn_cortex_stop_all_sub()
-    m.record_export_folder = '' # your place to export, you should have write permission, example on desktop
+    # m.record_export_folder = '' # your place to export, you should have write permission, example on desktop
     m.record_export_data_types = ['EEG', 'MOTION', 'PM', 'BP']
     m.record_export_format = 'CSV'
     m.record_export_version = 'V2'
