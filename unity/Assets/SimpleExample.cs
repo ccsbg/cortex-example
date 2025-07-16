@@ -5,6 +5,12 @@ using EmotivUnityPlugin;
 using UnityEngine.UI;
 using System;
 using System.Threading.Tasks;
+using System.Net.WebSockets;
+using System.Text;
+using System.Threading;
+using System.Linq;
+using Newtonsoft.Json.Linq;
+using System.IO;
 
 #if UNITY_ANDROID
 using UnityEngine.Android;
@@ -16,6 +22,10 @@ public class SimpleExample : MonoBehaviour
     EmotivUnityItf _eItf = EmotivUnityItf.Instance;
     float _timerDataUpdate = 0;
     const float TIME_UPDATE_DATA = 1f;
+
+    [SerializeField] public InputField exportFolderDescription;
+    [SerializeField] public InputField exportRecordsIDsDescription;
+
 
     [SerializeField] public InputField  HeadsetId;   // headsetId
     [SerializeField] public InputField  RecordTitle;     // record Title
@@ -39,7 +49,7 @@ public class SimpleExample : MonoBehaviour
     [SerializeField] public Text MessageLog;
 
     // for android
-    #if UNITY_ANDROID
+#if UNITY_ANDROID
     private const string FineLocationPermission = "android.permission.ACCESS_FINE_LOCATION";
     private const string BluetoothScanPermission = "android.permission.BLUETOOTH_SCAN";
     private const string BluetoothConnectPermission = "android.permission.BLUETOOTH_CONNECT";
@@ -133,7 +143,7 @@ public class SimpleExample : MonoBehaviour
             Permission.RequestUserPermission(permissionName);
         }
     }
-    #endif
+#endif
 
     void Start()
     {
@@ -264,8 +274,168 @@ public class SimpleExample : MonoBehaviour
             UnityEngine.Debug.LogError("Can not start a record because there is no active session or record title is empty.");
         }
     }
+    
+    async Task<string> QueryRecordsAsync(string token)
+    {
+        using var ws = new ClientWebSocket();
+        await ws.ConnectAsync(new Uri("wss://localhost:6868"), CancellationToken.None);
 
-    public void onStopRecordBtnClick() {
+        string request = $@"{{
+            ""id"": 1,
+            ""jsonrpc"": ""2.0"",
+            ""method"": ""queryRecords"",
+            ""params"": {{
+                ""cortexToken"": ""{token}"",
+                ""includeMarkers"": true,
+                ""orderBy"": [{{ ""startDatetime"": ""DESC"" }}],
+                ""query"": {{ }}
+            }}
+        }}";
+
+        byte[] reqBytes = Encoding.UTF8.GetBytes(request);
+        await ws.SendAsync(reqBytes, WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var buffer = new byte[8192];
+        WebSocketReceiveResult r = await ws.ReceiveAsync(buffer, CancellationToken.None);
+        return Encoding.UTF8.GetString(buffer, 0, r.Count);
+    }
+
+    public async void onQueryRecordsBtnClick()
+    {
+        MessageLog.text = "Querying records…";
+        string token = EmotivUnityPlugin.Authorizer.Instance.CortexToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            UnityEngine.Debug.LogError("Cortex token not found.");
+            MessageLog.text = "No Cortex token.";
+            return;
+        }
+
+        string json = await QueryRecordsAsync(token);
+        MessageLog.text = json;
+        await Task.Delay(2000);
+    }
+
+    async Task<string[]> QueryAllRecordIdsAsync(string token)
+    {
+        using var ws = new ClientWebSocket();
+        await ws.ConnectAsync(new Uri("wss://localhost:6868"), CancellationToken.None);
+
+        string request = $@"{{
+            ""id"": 1,
+            ""jsonrpc"": ""2.0"",
+            ""method"": ""queryRecords"",
+            ""params"": {{
+                ""cortexToken"": ""{token}"",
+                ""limit"": 0,
+                ""offset"": 0,
+                ""orderBy"": [ {{ ""startDatetime"": ""DESC"" }} ],
+                ""query"": {{}}
+            }}
+        }}";
+
+        await ws.SendAsync(Encoding.UTF8.GetBytes(request),
+                        WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var buffer = new byte[65536];
+        WebSocketReceiveResult r = await ws.ReceiveAsync(buffer, CancellationToken.None);
+        var json = Encoding.UTF8.GetString(buffer, 0, r.Count);
+
+        var j = JObject.Parse(json);
+        return j["result"]?["records"]?
+                .Select(rec => (string)rec["uuid"])
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToArray() ?? Array.Empty<string>();
+    }
+
+    async Task<string> ExportRecordsAsync(string token, string folder, string[] recordIds)
+    {
+        using var ws = new ClientWebSocket();
+        await ws.ConnectAsync(new Uri("wss://localhost:6868"), CancellationToken.None);
+
+        string ids = string.Join("\", \"", recordIds);
+        string request = $@"{{
+            ""id"": 1,
+            ""jsonrpc"": ""2.0"",
+            ""method"": ""exportRecord"",
+            ""params"": {{
+                ""cortexToken"": ""{token}"",
+                ""folder"": ""{folder}"",
+                ""format"": ""CSV"",
+                ""recordIds"": [""{ids}""],
+                ""streamTypes"": [""EEG"", ""MOTION"", ""PM"", ""BP""],
+                ""version"": ""V2""
+            }}
+        }}";
+
+        await ws.SendAsync(Encoding.UTF8.GetBytes(request),
+                        WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var buffer = new byte[8192];
+        WebSocketReceiveResult r = await ws.ReceiveAsync(buffer, CancellationToken.None);
+        return Encoding.UTF8.GetString(buffer, 0, r.Count);
+    }
+
+    public async void onExportRecordBtnClick()
+    {
+        try
+        {
+            MessageLog.text = "Exporting records…\n";
+            string token = EmotivUnityPlugin.Authorizer.Instance.CortexToken;
+            if (string.IsNullOrEmpty(token))
+            {
+                Debug.LogError("Cortex token not found.");
+                MessageLog.text += "No Cortex token.\n";
+                return;
+            }
+
+            string folder = exportFolderDescription.text.Trim();
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "ExportRecords");
+            }
+            if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+
+            MessageLog.text += "Exporting to folder: " + folder + "\n";
+
+            string[] recordIds;
+            string rawIds = exportRecordsIDsDescription.text.Trim();
+            if (string.IsNullOrWhiteSpace(rawIds))
+            {
+                recordIds = await QueryAllRecordIdsAsync(token);
+                if (recordIds.Length == 0)
+                {
+                    MessageLog.text += "No records found to export.\n";
+                    return;
+                }
+            }
+            else
+            {
+                recordIds = rawIds.Split(',')
+                                .Select(id => id.Trim())
+                                .Where(id => !string.IsNullOrEmpty(id))
+                                .ToArray();
+            }
+
+            MessageLog.text += "Record IDs to export: " + string.Join(", ", recordIds) + "\n";
+
+            string resultJson = await ExportRecordsAsync(token, folder, recordIds);
+
+            MessageLog.text += "Token: " + token + "\n";
+            MessageLog.text += "Folder: " + folder + "\n";
+            MessageLog.text += "Result: " + resultJson + "\n";
+
+            Debug.Log("Export complete: " + resultJson);
+        }
+        catch (Exception ex)
+        {
+            MessageLog.text += $"Exception: {ex.Message}\n";
+            Debug.LogError("ExportRecords Exception: " + ex);
+        }
+    }
+
+    public void onStopRecordBtnClick()
+    {
         Debug.Log("onStopRecordBtnClick");
         _eItf.StopRecord();
     }
@@ -379,14 +549,14 @@ public class SimpleExample : MonoBehaviour
     {
         Button signInBtn = GameObject.Find("SessionPart").transform.Find("signInBtn").GetComponent<Button>();
         Button signOutBtn = GameObject.Find("SessionPart").transform.Find("signOutBtn").GetComponent<Button>();
-        #if USE_EMBEDDED_LIB || UNITY_ANDROID || UNITY_IOS
+#if USE_EMBEDDED_LIB || UNITY_ANDROID || UNITY_IOS
         ConnectToCortexStates connectionState =  _eItf.GetConnectToCortexState();
         signInBtn.interactable = (connectionState == ConnectToCortexStates.Login_notYet);
         signOutBtn.interactable = (connectionState > ConnectToCortexStates.Login_notYet);
-        #else
+#else
         signInBtn.interactable = false;
         signOutBtn.interactable = false;
-        #endif
+#endif
 
         Button createSessionBtn = GameObject.Find("SessionPart").transform.Find("createSessionBtn").GetComponent<Button>();
         // query headset button
@@ -403,6 +573,8 @@ public class SimpleExample : MonoBehaviour
         Button startTrainingBtn = GameObject.Find("TrainingPart").transform.Find("startTrainingBtn").GetComponent<Button>();
         Button stopRecordBtn = GameObject.Find("RecordPart").transform.Find("stopRecordBtn").GetComponent<Button>();
         Button injectMarkerBtn = GameObject.Find("RecordPart").transform.Find("injectMarkerBtn").GetComponent<Button>();
+        Button exportRecordBtn = GameObject.Find("RecordPart").transform.Find("exportRecordBtn").GetComponent<Button>();
+        Button queryRecordsBtn = GameObject.Find("RecordPart").transform.Find("queryRecordsBtn").GetComponent<Button>();
 
         createSessionBtn.interactable = _eItf.IsAuthorizedOK;
         queryHeadsetBtn.interactable = _eItf.IsAuthorizedOK;
@@ -418,6 +590,8 @@ public class SimpleExample : MonoBehaviour
         eraseTrainingBtn.interactable = _eItf.IsProfileLoaded;
         acceptTrainingBtn.interactable = _eItf.IsProfileLoaded;
         unloadProfileBtn.interactable = _eItf.IsProfileLoaded;
+        exportRecordBtn.interactable = _eItf.IsAuthorizedOK;
+        queryRecordsBtn.interactable = _eItf.IsAuthorizedOK;
     }
 
     private List<string> GetStreamsList() {
