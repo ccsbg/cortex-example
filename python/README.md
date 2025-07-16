@@ -83,4 +83,63 @@ See: [Advanced BCI](https://emotiv.gitbook.io/cortex-api/advanced-bci)
 - Adjust the code as needed for your own applications.
 - For more details, refer to the [official Cortex API documentation](https://emotiv.gitbook.io/cortex-api/).
 
+# Adaptations made 
+
+The code was adapted to make the record stop by user interruption as opposed to a certain amount of time.
+
+An .env file shoule be created with the following format with your app's client id and secret: 
+```
+CLIENT_ID=
+CLIENT_SECRET=
+```
+
+The following commands should be run inside the root project directory.
+
+Before running any commands, ensure that Python and all necessary dependencies are installed.
+
+How to run:
+
+```make cortex```  - Run `cortex.py`.
+
+```make facial_expression_train```  - Run `facial_expression_train.py` using a specified profile name.  
+  Optional parameter:  
+  - `PROFILE_NAME=<your_profile>`  
+  Example:  
+  ```make facial_expression_train PROFILE_NAME=my_profile```
+
+```make mental_command_train```  - Run `mental_command_train.py` using a specified profile name.  
+  Optional parameter:  
+  - `PROFILE_NAME=<your_profile>`  
+  Example:  
+  ```make mental_command_train PROFILE_NAME=my_profile```
+
+```make live_advance```  - Run `live_advance.py` using a trained profile.  
+  Optional parameter:  
+  - `TRAINED_PROFILE_NAME=<your_trained_profile>`  
+  Example:  
+  ```make live_advance TRAINED_PROFILE_NAME=trained_alpha```
+
+```make marker```  - Run `marker.py` with specified marker and record metadata.  
+  Optional parameters:  
+  - `RECORD_TITLE=<title>`  
+  - `RECORD_DESCRIPTION=<description>`  
+  - `MARKER_VALUE=<value>`  
+  - `MARKER_LABEL=<label>`  
+  - `EXPORT_FOLDER=<path>`  
+  Example:  
+  ```make marker RECORD_TITLE=session1 MARKER_VALUE=blink EXPORT_FOLDER=~/Desktop```
+
+```make record```  - Run `record.py` with specified metadata and export path.  
+  Optional parameters:  
+  - `RECORD_TITLE=<title>`  
+  - `RECORD_DESCRIPTION=<description>`  
+  - `EXPORT_FOLDER=<path>`  
+  Example:  
+  ```make record RECORD_TITLE=baseline EXPORT_FOLDER=~/Desktop```
+
+```make sub_data```  - Run `sub_data.py`.
+
+```make help``` - Shows a summary of all targets and usage instructions.
+
+
 
