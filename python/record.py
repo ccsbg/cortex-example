@@ -83,6 +83,14 @@ class Record():
             time.sleep(1)
             length+=1
         print('end recording -------------------------')
+    
+    def wait_for_user_stop(self):
+        print('Recording started. Press ENTER to stop...')
+        try:
+            input()
+        except KeyboardInterrupt:
+            print("Recording stopped by keyboard interrupt.")
+
 
     # callbacks functions
     def on_create_session_done(self, *args, **kwargs):
@@ -100,7 +108,9 @@ class Record():
         print('on_create_record_done: recordId: {0}, title: {1}, startTime: {2}'.format(self.record_id, title, start_time))
 
         # record duration is record_length_s
-        self.wait(self.record_duration_s)
+        #self.wait(self.record_duration_s)
+        self.wait_for_user_stop()
+
 
         # stop record
         self.stop_record()
@@ -190,7 +200,7 @@ def main():
     r.record_export_format = 'CSV'
     r.record_export_version = 'V2'
 
-
+    # this is no longer being used, as to allow the user to record aas long as needed
     record_duration_s = 10 # duration for recording in this example. It is not input param of create_record
     r.start(record_duration_s)
 
