@@ -421,10 +421,6 @@ public class SimpleExample : MonoBehaviour
 
             string resultJson = await ExportRecordsAsync(token, folder, recordIds);
 
-            MessageLog.text += "Token: " + token + "\n";
-            MessageLog.text += "Folder: " + folder + "\n";
-            MessageLog.text += "Result: " + resultJson + "\n";
-
             Debug.Log("Export complete: " + resultJson);
         }
         catch (Exception ex)
