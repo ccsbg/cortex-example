@@ -6,6 +6,13 @@ RECORD_DESCRIPTION ?= optional_description
 MARKER_VALUE ?= test_value
 MARKER_LABEL ?= test_label
 EXPORT_FOLDER ?= ./export
+FOLDER ?= recordings_csv
+OUTPUT ?= recording_graphs
+START ?=
+END ?=
+METRICS ?=
+PLOT_NO_DATETIME ?= false
+
 
 all: help
 
@@ -51,3 +58,17 @@ record:
 
 sub_data:
 	python3 sub_data.py
+
+PLOT_NO_DATETIME ?= false
+
+plot:
+	python3 visualization.py \
+		--folder $(FOLDER) \
+		--output $(OUTPUT) \
+		$(if $(START),--start $(START)) \
+		$(if $(END),--end $(END)) \
+		$(if $(METRICS),--metrics $(METRICS)) \
+		$(if $(filter true,$(PLOT_NO_DATETIME)),--no_datetime)
+
+clear: 
+	rm -rf $(OUTPUT)

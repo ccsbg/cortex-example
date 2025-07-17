@@ -1,1 +1,5 @@
 websocket-client
+matplotlib
+pandas
+seaborn
+# Requires Python >= 3.10

@@ -139,6 +139,19 @@ How to run:
 
 ```make sub_data```  - Run `sub_data.py`.
 
+```make plot```  -  Run visualization.py to generate plots from CSV recordings.
+  Optional parameters:
+  FOLDER=<input_csv_folder> (default: recordings_csv)
+  OUTPUT=<output_folder> (default: recording_graphs)
+  START=<start_time> (e.g., 00:01:00)
+  END=<end_time> (e.g., 00:02:00)
+  METRICS=<comma_separated_metrics> (e.g., eng,is_active)
+  PLOT_NO_DATETIME=true (omit datetime from x-axis)
+Example:
+make plot METRICS=eng,is_active START=00:00:10 END=00:01:00 PLOT_NO_DATETIME=true
+
+```make clear```  - Deletes the folder specified in OUTPUT (default: recording_graphs).
+
 ```make help``` - Shows a summary of all targets and usage instructions.
 
 
