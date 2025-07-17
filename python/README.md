@@ -154,5 +154,7 @@ make plot METRICS=eng,is_active START=00:00:10 END=00:01:00 PLOT_NO_DATETIME=tru
 
 ```make help``` - Shows a summary of all targets and usage instructions.
 
+# Notes about the Data Streams 
 
-
+In the link mentioned above ([Data Subscription](https://emotiv.gitbook.io/cortex-api/data-subscription)) it explains each data stream. 
+Some things easy to miss when looking over the csv file header are **CQ**, which is "contact quality" and is part of the "dev" steam . **PM** is the "met" stream, however the name was updated.
